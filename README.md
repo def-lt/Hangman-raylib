@@ -5,11 +5,12 @@
 ## Как запустить
 
 1. Установи [raylib](https://github.com/raysan5/raylib/releases) и компилятор [w64devkit](https://github.com/skeeto/w64devkit/releases).
-2. Распакуй raylib в `C:/raylib`, а w64devkit в `C:/w64devkit`.
-3. Добавь `C:/w64devkit/bin` в переменную среды Path.
-4. Открой проект в VS Code.
-5. Нажми `Ctrl + Shift + B` чтобы скомпилировать.
-6. Запусти появившийся файл `hangman.exe`.
+2. Распакуй raylib (папка `raylib-6.0_win64_mingw-w64`) в `C:/raylib-6.0_win64_mingw-w64`.
+3. Распакуй w64devkit в `C:/w64devkit`.
+4. Добавь `C:/w64devkit/bin` в переменную среды Path.
+5. Открой проект в VS Code.
+6. Нажми `Ctrl + Shift + B` чтобы скомпилировать.
+7. Запусти появившийся файл `hangman.exe`.
 
 ## Управление
 
