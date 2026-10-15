@@ -33,32 +33,25 @@ int main() {
     const int screenWidth = 900;
     const int screenHeight = 550;
 
-    InitWindow(screenWidth, screenHeight, "Viselica");
+    InitWindow(screenWidth, screenHeight, "Hangman");
     SetTargetFPS(60);
 
-    // Загружаем системный шрифт Windows, который поддерживает русский
-    Font font = LoadFont("C:/Windows/Fonts/arial.ttf");
-    if (font.texture.id == 0) {
-        // Если Arial не найден — пробуем другой
-        font = LoadFont("C:/Windows/Fonts/segoeui.ttf");
-    }
-
     vector<string> words = {
-        "программирование",
-        "компьютер",
-        "алгоритм",
-        "переменная",
-        "функция",
-        "массив",
-        "компилятор",
-        "интерфейс",
-        "процессор",
-        "оператор",
-        "память",
-        "цикл",
-        "условие",
-        "класс",
-        "объект"
+        "programming",
+        "computer",
+        "algorithm",
+        "variable",
+        "function",
+        "array",
+        "compiler",
+        "interface",
+        "processor",
+        "operator",
+        "memory",
+        "cycle",
+        "condition",
+        "class",
+        "object"
     };
 
     srand((unsigned)time(0));
@@ -72,25 +65,26 @@ int main() {
 
     while (!WindowShouldClose()) {
 
+        // Restart on R
         if (gameOver && IsKeyPressed(KEY_R)) {
             NewGame(word, hidden, usedLetters, errors, gameOver, win, words);
         }
 
+        // Input
         if (!gameOver) {
             int key = GetCharPressed();
             while (key > 0) {
-                if (key > 32) {
-                    char ch = (char)key;
-                    bool alreadyUsed = (usedLetters.find(ch) != string::npos);
+                if ((key >= 'A' && key <= 'Z') || (key >= 'a' && key <= 'z')) {
+                    char letter = (char)tolower(key);
 
-                    if (!alreadyUsed) {
-                        usedLetters += ch;
+                    if (usedLetters.find(letter) == string::npos) {
+                        usedLetters += letter;
                         usedLetters += " ";
 
                         bool found = false;
-                        for (size_t i = 0; i < word.size(); i++) {
-                            if (word[i] == ch) {
-                                hidden[i] = word[i];
+                        for (size_t i = 0; i < word.length(); i++) {
+                            if (word[i] == letter) {
+                                hidden[i] = letter;
                                 found = true;
                             }
                         }
@@ -113,37 +107,36 @@ int main() {
             }
         }
 
+        // Drawing
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
-        // Используем загруженный шрифт
-        DrawTextEx(font, "ВИСЕЛИЦА", Vector2{350, 20}, 40, 2, DARKBLUE);
+        DrawText("HANGMAN", 350, 20, 40, DARKBLUE);
         DrawHangman(errors);
 
-        DrawTextEx(font, "Слово:", Vector2{420, 140}, 28, 1, BLACK);
-        DrawTextEx(font, hidden.c_str(), Vector2{420, 180}, 40, 2, DARKGREEN);
+        DrawText("Word:", 420, 140, 28, BLACK);
+        DrawText(hidden.c_str(), 420, 180, 40, DARKGREEN);
 
-        DrawTextEx(font, "Использованные буквы:", Vector2{420, 260}, 22, 1, GRAY);
-        DrawTextEx(font, usedLetters.c_str(), Vector2{420, 295}, 26, 1, BLACK);
+        DrawText("Used letters:", 420, 260, 22, GRAY);
+        DrawText(usedLetters.c_str(), 420, 295, 26, BLACK);
 
-        DrawTextEx(font, TextFormat("Ошибок: %d / 6", errors), Vector2{420, 350}, 26, 1, RED);
+        DrawText(TextFormat("Errors: %d / 6", errors), 420, 350, 26, RED);
 
         if (gameOver) {
             if (win) {
-                DrawTextEx(font, "ПОБЕДА!", Vector2{350, 430}, 50, 2, GREEN);
+                DrawText("YOU WIN!", 350, 430, 50, GREEN);
             } else {
-                DrawTextEx(font, "ПРОИГРЫШ", Vector2{320, 430}, 50, 2, RED);
-                DrawTextEx(font, TextFormat("Слово было: %s", word.c_str()), Vector2{250, 485}, 26, 1, BLACK);
+                DrawText("YOU LOSE", 340, 430, 50, RED);
+                DrawText(TextFormat("The word was: %s", word.c_str()), 280, 485, 26, BLACK);
             }
-            DrawTextEx(font, "Нажми R чтобы начать заново", Vector2{260, 520}, 22, 1, DARKGRAY);
+            DrawText("Press R to play again", 300, 520, 22, DARKGRAY);
         } else {
-            DrawTextEx(font, "Вводи буквы с клавиатуры", Vector2{280, 480}, 26, 1, DARKGRAY);
+            DrawText("Type letters on the keyboard", 260, 480, 26, DARKGRAY);
         }
 
         EndDrawing();
     }
 
-    UnloadFont(font);
     CloseWindow();
     return 0;
 }
