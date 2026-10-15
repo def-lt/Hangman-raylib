@@ -7,7 +7,6 @@
 
 using namespace std;
 
-// Рисуем человечка
 void DrawHangman(int errors) {
     DrawLine(100, 420, 100, 80, BLACK);
     DrawLine(100, 80, 250, 80, BLACK);
@@ -34,8 +33,15 @@ int main() {
     const int screenWidth = 900;
     const int screenHeight = 550;
 
-    InitWindow(screenWidth, screenHeight, "Виселица");
+    InitWindow(screenWidth, screenHeight, "Viselica");
     SetTargetFPS(60);
+
+    // Загружаем системный шрифт Windows, который поддерживает русский
+    Font font = LoadFont("C:/Windows/Fonts/arial.ttf");
+    if (font.texture.id == 0) {
+        // Если Arial не найден — пробуем другой
+        font = LoadFont("C:/Windows/Fonts/segoeui.ttf");
+    }
 
     vector<string> words = {
         "программирование",
@@ -66,99 +72,78 @@ int main() {
 
     while (!WindowShouldClose()) {
 
-        // Перезапуск по R
         if (gameOver && IsKeyPressed(KEY_R)) {
             NewGame(word, hidden, usedLetters, errors, gameOver, win, words);
         }
 
-        // Ввод букв
         if (!gameOver) {
             int key = GetCharPressed();
             while (key > 0) {
-                // Преобразуем нажатую клавишу в строку из одного символа
-                string letter(1, (char)key);   // для ASCII
-                
-                // Для кириллицы GetCharPressed возвращает код > 127
-                // Мы будем искать эту букву прямо в загаданном слове
-                // Самый простой рабочий способ:
+                if (key > 32) {
+                    char ch = (char)key;
+                    bool alreadyUsed = (usedLetters.find(ch) != string::npos);
 
-                bool alreadyUsed = false;
-                for (char c : usedLetters) {
-                    if (c == (char)key) {
-                        alreadyUsed = true;
-                        break;
-                    }
-                }
+                    if (!alreadyUsed) {
+                        usedLetters += ch;
+                        usedLetters += " ";
 
-                if (!alreadyUsed && key > 32) {
-                    usedLetters += (char)key;
-                    usedLetters += " ";
-
-                    bool found = false;
-                    for (size_t i = 0; i < word.length(); i++) {
-                        if (word[i] == (char)key) {
-                            hidden[i] = word[i];
-                            found = true;
+                        bool found = false;
+                        for (size_t i = 0; i < word.size(); i++) {
+                            if (word[i] == ch) {
+                                hidden[i] = word[i];
+                                found = true;
+                            }
                         }
-                    }
 
-                    // Дополнительно проверяем маленькие/большие (на всякий случай)
-                    char lowerKey = (char)tolower(key);
-                    for (size_t i = 0; i < word.length(); i++) {
-                        if (word[i] == lowerKey) {
-                            hidden[i] = word[i];
-                            found = true;
+                        if (!found) {
+                            errors++;
+                            if (errors >= 6) {
+                                gameOver = true;
+                                win = false;
+                            }
                         }
-                    }
 
-                    if (!found) {
-                        errors++;
-                        if (errors >= 6) {
+                        if (hidden == word) {
                             gameOver = true;
-                            win = false;
+                            win = true;
                         }
                     }
-
-                    if (hidden == word) {
-                        gameOver = true;
-                        win = true;
-                    }
                 }
-
                 key = GetCharPressed();
             }
         }
 
-        // Рисование
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
-        DrawText("ВИСЕЛИЦА", 350, 20, 40, DARKBLUE);
+        // Используем загруженный шрифт
+        DrawTextEx(font, "ВИСЕЛИЦА", Vector2{350, 20}, 40, 2, DARKBLUE);
         DrawHangman(errors);
 
-        DrawText("Слово:", 420, 140, 28, BLACK);
-        DrawText(hidden.c_str(), 420, 180, 40, DARKGREEN);
+        DrawTextEx(font, "Слово:", Vector2{420, 140}, 28, 1, BLACK);
+        DrawTextEx(font, hidden.c_str(), Vector2{420, 180}, 40, 2, DARKGREEN);
 
-        DrawText("Использованные буквы:", 420, 260, 22, GRAY);
-        DrawText(usedLetters.c_str(), 420, 295, 26, BLACK);
+        DrawTextEx(font, "Использованные буквы:", Vector2{420, 260}, 22, 1, GRAY);
+        DrawTextEx(font, usedLetters.c_str(), Vector2{420, 295}, 26, 1, BLACK);
 
-        DrawText(TextFormat("Ошибок: %d / 6", errors), 420, 350, 26, RED);
+        DrawTextEx(font, TextFormat("Ошибок: %d / 6", errors), Vector2{420, 350}, 26, 1, RED);
 
         if (gameOver) {
             if (win) {
-                DrawText("ПОБЕДА!", 350, 430, 50, GREEN);
+                DrawTextEx(font, "ПОБЕДА!", Vector2{350, 430}, 50, 2, GREEN);
             } else {
-                DrawText("ПРОИГРЫШ", 320, 430, 50, RED);
-                DrawText(TextFormat("Слово было: %s", word.c_str()), 250, 485, 26, BLACK);
+                DrawTextEx(font, "ПРОИГРЫШ", Vector2{320, 430}, 50, 2, RED);
+                DrawTextEx(font, TextFormat("Слово было: %s", word.c_str()), Vector2{250, 485}, 26, 1, BLACK);
             }
-            DrawText("Нажми R чтобы начать заново", 260, 520, 22, DARKGRAY);
+            DrawTextEx(font, "Нажми R чтобы начать заново", Vector2{260, 520}, 22, 1, DARKGRAY);
         } else {
-            DrawText("Вводи буквы с клавиатуры", 280, 480, 26, DARKGRAY);
+            DrawTextEx(font, "Вводи буквы с клавиатуры", Vector2{280, 480}, 26, 1, DARKGRAY);
         }
 
         EndDrawing();
     }
 
+    UnloadFont(font);
     CloseWindow();
     return 0;
 }
