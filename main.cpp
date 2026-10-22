@@ -29,6 +29,13 @@ void NewGame(string& word, string& hidden, string& usedLetters, int& errors, boo
     win = false;
 }
 
+// Очищает очередь нажатых символов (чтобы R не попадал в новую игру)
+void ClearInputBuffer() {
+    while (GetCharPressed() > 0) {
+        // просто вычитываем все символы из буфера
+    }
+}
+
 int main() {
     const int screenWidth = 900;
     const int screenHeight = 550;
@@ -68,6 +75,7 @@ int main() {
         // Restart on R
         if (gameOver && IsKeyPressed(KEY_R)) {
             NewGame(word, hidden, usedLetters, errors, gameOver, win, words);
+            ClearInputBuffer();   // <-- важное исправление
         }
 
         // Input
