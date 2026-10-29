@@ -8,25 +8,89 @@
 using namespace std;
 
 const int screenWidth = 900;
-const int screenHeight = 600;
+const int screenHeight = 650;
 
-// Экранная клавиатура: 2 ряда по 13 букв
+// Экранная клавиатура: EN — 2 ряда по 13, RU — 3 ряда по 11
 const int KEY_SIZE = 50;
 const int KEY_GAP = 8;
-const int KEYS_PER_ROW = 13;
-const int KEYBOARD_X = (screenWidth - (KEYS_PER_ROW * (KEY_SIZE + KEY_GAP) - KEY_GAP)) / 2;
-const int KEYBOARD_Y = 450;
+const int KEYBOARD_Y = 440;
 
-Rectangle KeyRect(int i) {
-    int row = i / KEYS_PER_ROW;
-    int col = i % KEYS_PER_ROW;
-    return { (float)(KEYBOARD_X + col * (KEY_SIZE + KEY_GAP)),
-             (float)(KEYBOARD_Y + row * (KEY_SIZE + KEY_GAP)),
-             (float)KEY_SIZE, (float)KEY_SIZE };
+// Тексты интерфейса на двух языках
+struct UiText {
+    const char* category;
+    const char* letters;
+    const char* lives;
+    const char* errors;
+    const char* score;
+    const char* win;
+    const char* lose;
+    const char* wordWas;
+    const char* playAgain;
+    const char* hint;
+    const char* alreadyUsed;
+    const char* invalid;
+    const char* wrongLayout;
+};
+
+const UiText TEXT_EN = {
+    "Category: %s", "%d letters", "Lives:", "Errors: %d / %d", "Wins: %d   Losses: %d",
+    "YOU WIN!", "YOU LOSE", "The word was: %s", "Press R, ENTER or click to play again",
+    "Type letters or click the buttons.  F1 - language",
+    "Letter '%s' was already used", "Only letters A-Z", "Switch keyboard layout to English"
+};
+
+const UiText TEXT_RU = {
+    "Категория: %s", "Букв в слове: %d", "Жизни:", "Ошибки: %d / %d", "Победы: %d   Поражения: %d",
+    "ПОБЕДА!", "ПОРАЖЕНИЕ", "Загаданное слово: %s", "R, ENTER или клик - новая игра",
+    "Вводи буквы или нажимай кнопки.  F1 - язык",
+    "Буква '%s' уже была", "Только буквы А-Я", "Переключи раскладку на русскую"
+};
+
+Font font;
+
+void Text(const string& s, float x, float y, float size, Color color) {
+    DrawTextEx(font, s.c_str(), { x, y }, size, 1, color);
 }
 
-void DrawCentered(const char* text, int y, int size, Color color) {
-    DrawText(text, (screenWidth - MeasureText(text, size)) / 2, y, size, color);
+float TextWidth(const string& s, float size) {
+    return MeasureTextEx(font, s.c_str(), size, 1).x;
+}
+
+void TextCentered(const string& s, float y, float size, Color color) {
+    Text(s, (screenWidth - TextWidth(s, size)) / 2, y, size, color);
+}
+
+// Шрифт из Windows с латиницей и кириллицей (встроенный шрифт raylib не умеет кириллицу)
+Font LoadGameFont() {
+    vector<int> codepoints;
+    for (int c = 32; c < 127; c++) codepoints.push_back(c);
+    for (int c = 0x410; c <= 0x44F; c++) codepoints.push_back(c);
+    codepoints.push_back(0x401);
+    codepoints.push_back(0x451);
+
+    const char* paths[] = { "C:/Windows/Fonts/arial.ttf", "C:/Windows/Fonts/segoeui.ttf",
+                            "C:/Windows/Fonts/tahoma.ttf" };
+    for (const char* path : paths) {
+        if (!FileExists(path)) continue;
+        Font f = LoadFontEx(path, 64, codepoints.data(), (int)codepoints.size());
+        if (f.texture.id != 0) {
+            SetTextureFilter(f.texture, TEXTURE_FILTER_BILINEAR);
+            return f;
+        }
+    }
+    return GetFontDefault();
+}
+
+int KeysPerRow(Language lang) { return lang == Language::English ? 13 : 11; }
+
+Rectangle KeyRect(int i, Language lang) {
+    int perRow = KeysPerRow(lang);
+    int startX = (screenWidth - (perRow * (KEY_SIZE + KEY_GAP) - KEY_GAP)) / 2;
+    int row = i / perRow;
+    int col = i % perRow;
+    return { (float)(startX + col * (KEY_SIZE + KEY_GAP)),
+             (float)(KEYBOARD_Y + row * (KEY_SIZE + KEY_GAP)),
+             (float)KEY_SIZE, (float)KEY_SIZE };
 }
 
 void DrawHangman(int errors) {
@@ -53,23 +117,40 @@ void DrawHangman(int errors) {
 }
 
 int main() {
-    InitWindow(screenWidth, screenHeight, "Hangman");
+    InitWindow(screenWidth, screenHeight, "Hangman / Виселица");
     SetTargetFPS(60);
     srand((unsigned)time(0));
+    font = LoadGameFont();
 
-    vector<WordEntry> words = {
-        { "programming", "IT" },   { "computer", "IT" },   { "algorithm", "IT" },
-        { "variable", "IT" },      { "function", "IT" },   { "array", "IT" },
-        { "compiler", "IT" },      { "interface", "IT" },  { "processor", "IT" },
-        { "operator", "IT" },      { "memory", "IT" },     { "cycle", "IT" },
-        { "condition", "IT" },     { "class", "IT" },      { "object", "IT" },
-        { "elephant", "Animals" }, { "giraffe", "Animals" }, { "penguin", "Animals" },
-        { "dolphin", "Animals" },  { "kangaroo", "Animals" },
-        { "banana", "Food" },      { "pizza", "Food" },    { "chocolate", "Food" },
-        { "sandwich", "Food" },    { "london", "Cities" }, { "moscow", "Cities" },
-        { "paris", "Cities" },     { "tokyo", "Cities" }
+    vector<WordEntry> wordsEn = {
+        { U"programming", "IT" },   { U"computer", "IT" },   { U"algorithm", "IT" },
+        { U"variable", "IT" },      { U"function", "IT" },   { U"array", "IT" },
+        { U"compiler", "IT" },      { U"interface", "IT" },  { U"processor", "IT" },
+        { U"operator", "IT" },      { U"memory", "IT" },     { U"cycle", "IT" },
+        { U"condition", "IT" },     { U"class", "IT" },      { U"object", "IT" },
+        { U"elephant", "Animals" }, { U"giraffe", "Animals" }, { U"penguin", "Animals" },
+        { U"dolphin", "Animals" },  { U"kangaroo", "Animals" },
+        { U"banana", "Food" },      { U"pizza", "Food" },    { U"chocolate", "Food" },
+        { U"sandwich", "Food" },    { U"london", "Cities" }, { U"moscow", "Cities" },
+        { U"paris", "Cities" },     { U"tokyo", "Cities" }
     };
 
+    vector<WordEntry> wordsRu = {
+        { U"программа", "Информатика" }, { U"компьютер", "Информатика" },
+        { U"алгоритм", "Информатика" },  { U"переменная", "Информатика" },
+        { U"функция", "Информатика" },   { U"массив", "Информатика" },
+        { U"компилятор", "Информатика" }, { U"процессор", "Информатика" },
+        { U"память", "Информатика" },    { U"цикл", "Информатика" },
+        { U"условие", "Информатика" },   { U"объект", "Информатика" },
+        { U"слон", "Животные" },   { U"жираф", "Животные" },  { U"пингвин", "Животные" },
+        { U"дельфин", "Животные" }, { U"кенгуру", "Животные" }, { U"ёжик", "Животные" },
+        { U"банан", "Еда" },  { U"пицца", "Еда" },  { U"шоколад", "Еда" },
+        { U"бутерброд", "Еда" }, { U"молоко", "Еда" },
+        { U"москва", "Города" }, { U"лондон", "Города" }, { U"париж", "Города" },
+        { U"казань", "Города" }, { U"токио", "Города" }
+    };
+
+    Language lang = Language::Russian;
     HangmanGame game;
     int wordIndex = -1;
     int wins = 0, losses = 0;
@@ -77,34 +158,54 @@ int main() {
     float messageTimer = 0;
     bool scoreCounted = false;
 
+    auto words = [&]() -> const vector<WordEntry>& { return lang == Language::English ? wordsEn : wordsRu; };
+    auto text = [&]() -> const UiText& { return lang == Language::English ? TEXT_EN : TEXT_RU; };
+
     auto newGame = [&]() {
-        wordIndex = PickWordIndex((int)words.size(), wordIndex);
-        game.Start(words[wordIndex].word);
+        wordIndex = PickWordIndex((int)words().size(), wordIndex);
+        game.Start(words()[wordIndex].word, lang);
         scoreCounted = false;
         message.clear();
         while (GetCharPressed() > 0) {} // не переносим нажатия в новую игру
     };
 
+    auto switchLanguage = [&]() {
+        lang = lang == Language::English ? Language::Russian : Language::English;
+        wordIndex = -1;
+        newGame();
+    };
+
     auto handleGuess = [&](int key) {
         GuessResult r = game.Guess(key);
         if (r == GuessResult::AlreadyUsed) {
-            message = TextFormat("Letter '%c' was already used", HangmanGame::ToLower((char)key));
-            messageTimer = 1.5f;
+            message = TextFormat(text().alreadyUsed, ToUtf8(HangmanGame::ToUpper((char32_t)key)).c_str());
         } else if (r == GuessResult::Invalid) {
-            message = "Only English letters A-Z";
-            messageTimer = 1.5f;
+            message = text().invalid;
+        } else if (r == GuessResult::WrongLayout) {
+            message = text().wrongLayout;
+        } else {
+            return;
         }
+        messageTimer = 2.0f;
     };
+
+    Rectangle langButton = { 20, 15, 70, 36 };
 
     newGame();
 
     while (!WindowShouldClose()) {
         float dt = GetFrameTime();
         if (messageTimer > 0) messageTimer -= dt;
+        u32string alphabet = HangmanGame::Alphabet(lang);
+        Vector2 mouse = GetMousePosition();
+        bool clicked = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
 
         // Ввод
-        if (game.IsOver()) {
-            if (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_ENTER) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+        if (IsKeyPressed(KEY_F1) || (clicked && CheckCollisionPointRec(mouse, langButton))) {
+            switchLanguage();
+            clicked = false;
+        } else if (game.IsOver()) {
+            if (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_ENTER) || clicked)
                 newGame();
         } else {
             int key = GetCharPressed();
@@ -112,10 +213,9 @@ int main() {
                 if (key != ' ') handleGuess(key);
                 key = GetCharPressed();
             }
-            if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-                Vector2 m = GetMousePosition();
-                for (int i = 0; i < 26; i++)
-                    if (CheckCollisionPointRec(m, KeyRect(i))) handleGuess('a' + i);
+            if (clicked) {
+                for (size_t i = 0; i < alphabet.size(); i++)
+                    if (CheckCollisionPointRec(mouse, KeyRect((int)i, lang))) handleGuess(alphabet[i]);
             }
         }
 
@@ -124,65 +224,68 @@ int main() {
             scoreCounted = true;
         }
 
+        const UiText& t = text();
+
         // Отрисовка
         BeginDrawing();
         ClearBackground({ 245, 240, 230, 255 });
 
-        DrawText("HANGMAN", 330, 15, 44, DARKBLUE);
-        DrawText(TextFormat("Wins: %d   Losses: %d", wins, losses), 660, 25, 20, DARKGRAY);
+        TextCentered(lang == Language::English ? "HANGMAN" : "ВИСЕЛИЦА", 12, 48, DARKBLUE);
+        string score = TextFormat(t.score, wins, losses);
+        Text(score, screenWidth - TextWidth(score, 20) - 20, 22, 20, DARKGRAY);
+
+        // Кнопка языка
+        bool langHover = CheckCollisionPointRec(mouse, langButton);
+        DrawRectangleRounded(langButton, 0.3f, 6, langHover ? SKYBLUE : WHITE);
+        DrawRectangleRoundedLinesEx(langButton, 0.3f, 6, 2, DARKGRAY);
+        const char* langLabel = lang == Language::English ? "EN" : "RU";
+        Text(langLabel, langButton.x + (langButton.width - TextWidth(langLabel, 24)) / 2, langButton.y + 6, 24, DARKBLUE);
 
         DrawHangman(game.Errors());
 
-        DrawText(TextFormat("Category: %s", words[wordIndex].category.c_str()), 330, 100, 24, DARKPURPLE);
+        Text(TextFormat(t.category, words()[wordIndex].category.c_str()), 330, 95, 26, DARKPURPLE);
 
-        string shown = game.IsOver() ? "" : game.Display();
-        if (game.IsOver()) {
-            // после конца игры показываем слово целиком
-            for (size_t i = 0; i < game.Word().size(); i++) {
-                if (i > 0) shown += ' ';
-                shown += game.Word()[i];
-            }
-        }
-        DrawText(shown.c_str(), 330, 160, 40, game.IsOver() && !game.IsWin() ? MAROON : DARKGREEN);
-        DrawText(TextFormat("%d letters", (int)game.Word().size()), 330, 210, 18, GRAY);
+        string shown = game.IsOver() ? game.DisplayWord() : game.Display();
+        Text(shown, 330, 150, 44, game.IsOver() && !game.IsWin() ? MAROON : DARKGREEN);
+        Text(TextFormat(t.letters, (int)game.Word().size()), 330, 205, 20, GRAY);
 
         // Жизни
-        DrawText("Lives:", 330, 260, 24, BLACK);
+        Text(t.lives, 330, 255, 26, BLACK);
         for (int i = 0; i < HangmanGame::MAX_ERRORS; i++) {
             Color c = i < game.ErrorsLeft() ? RED : LIGHTGRAY;
-            DrawCircle(430 + i * 32, 272, 11, c);
+            DrawCircle(450 + i * 32, 270, 11, c);
         }
-        DrawText(TextFormat("Errors: %d / %d", game.Errors(), HangmanGame::MAX_ERRORS), 330, 300, 22, MAROON);
+        Text(TextFormat(t.errors, game.Errors(), HangmanGame::MAX_ERRORS), 330, 295, 24, MAROON);
 
-        if (messageTimer > 0) DrawText(message.c_str(), 330, 345, 22, ORANGE);
+        if (messageTimer > 0) Text(message, 330, 340, 24, ORANGE);
 
         // Экранная клавиатура
-        Vector2 mouse = GetMousePosition();
-        for (int i = 0; i < 26; i++) {
-            char c = 'a' + i;
-            Rectangle r = KeyRect(i);
+        for (size_t i = 0; i < alphabet.size(); i++) {
+            char32_t c = alphabet[i];
+            Rectangle r = KeyRect((int)i, lang);
             Color bg = WHITE;
             if (game.IsUsed(c)) bg = game.IsInWord(c) ? Color{ 120, 200, 120, 255 } : Color{ 230, 120, 120, 255 };
             else if (!game.IsOver() && CheckCollisionPointRec(mouse, r)) bg = SKYBLUE;
             DrawRectangleRounded(r, 0.2f, 6, bg);
             DrawRectangleRoundedLinesEx(r, 0.2f, 6, 2, DARKGRAY);
-            char label[2] = { (char)(c - 'a' + 'A'), 0 };
-            DrawText(label, (int)r.x + (KEY_SIZE - MeasureText(label, 28)) / 2, (int)r.y + 11, 28, BLACK);
+            string label = ToUtf8(HangmanGame::ToUpper(c));
+            Text(label, r.x + (KEY_SIZE - TextWidth(label, 30)) / 2, r.y + 10, 30, BLACK);
         }
 
         if (game.IsOver()) {
-            DrawRectangle(0, 380, screenWidth, 220, Fade(BLACK, 0.92f));
-            if (game.IsWin()) DrawCentered("YOU WIN!", 410, 56, GREEN);
-            else DrawCentered("YOU LOSE", 410, 56, RED);
-            DrawCentered(TextFormat("The word was: %s", game.Word().c_str()), 480, 28, RAYWHITE);
-            DrawCentered("Press R, ENTER or click to play again", 530, 22, LIGHTGRAY);
+            DrawRectangle(0, 380, screenWidth, screenHeight - 380, Fade(BLACK, 0.92f));
+            if (game.IsWin()) TextCentered(t.win, 420, 60, GREEN);
+            else TextCentered(t.lose, 420, 60, RED);
+            TextCentered(TextFormat(t.wordWas, ToUtf8(game.Word()).c_str()), 500, 30, RAYWHITE);
+            TextCentered(t.playAgain, 560, 24, LIGHTGRAY);
         } else {
-            DrawCentered("Type letters on the keyboard or click the buttons", 570, 20, GRAY);
+            TextCentered(t.hint, 620, 20, GRAY);
         }
 
         EndDrawing();
     }
 
+    if (font.texture.id != GetFontDefault().texture.id) UnloadFont(font);
     CloseWindow();
     return 0;
 }
