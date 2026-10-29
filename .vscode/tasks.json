@@ -23,6 +23,13 @@
                 "isDefault": true
             },
             "problemMatcher": ["$gcc"]
+        },
+        {
+            "label": "tests",
+            "type": "shell",
+            "command": "C:/w64devkit/bin/g++.exe -o tests.exe tests.cpp; ./tests.exe",
+            "group": "test",
+            "problemMatcher": ["$gcc"]
         }
     ]
 }
